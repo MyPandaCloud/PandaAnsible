@@ -1,0 +1,33 @@
+<settings>
+    <setting id="addCounts" value="true" />
+    <setting id="addEpisodeNumber" value="true" />
+    <setting id="addResumePercent" value="true" />
+    <setting id="addSeasonNumber" value="false" />
+    <setting id="addSubtitleAvailable" value="false" />
+    <setting id="cacheEmbyData" value="false" />
+    <setting id="deviceName" value="EmbyCon" />
+    <setting id="episode_name_format" value="{SeriesName} - s{SeasonIndex}e{EpisodeIndex} - {ItemName}" />
+    <setting id="flatten_single_season" value="true" />
+    <setting id="include_media" value="true" />
+    <setting id="include_overview" value="true" />
+    <setting id="include_people" value="false" />
+    <setting id="ipaddress" value="192.168.1.33" />
+    <setting id="jump_back_amount" value="15" />
+    <setting id="password" value="" />
+    <setting id="playback_bitrate" value="6000" />
+    <setting id="playback_max_width" value="6" />
+    <setting id="playback_type" value="1" />
+    <setting id="playback_video_force_8" value="false" />
+    <setting id="port" value="8096" />
+    <setting id="profile" value="false" />
+    <setting id="promptDeleteEpisodePercentage" value="100" />
+    <setting id="promptDeleteMoviePercentage" value="100" />
+    <setting id="promptPlayNextEpisodePercentage" value="100" />
+    <setting id="showLoadProgress" value="false" />
+    <setting id="show_x_filtered_items" value="20" />
+    <setting id="smbpassword" value="" />
+    <setting id="smbusername" value="" />
+    <setting id="use_https" value="false" />
+    <setting id="username" value="emby" />
+    <setting id="verify_cert" value="false" />
+</settings>
