@@ -135,9 +135,6 @@
     - name: Installation FFMpeg
       apt: name=ffmpeg state=present
 
-    - name: Installation Bacula Client 
-      apt: name=bacula-client state=present
-
     - name: Installation transmission
       apt: name=transmission-daemon state=present
 
@@ -261,28 +258,14 @@
         minute: "*/15"
         job: "cd /var/www/html/nextcloud/; sudo -u www-data php occ files:scan --all"
 
-# Kodi
-    - name: Modification user kodi service
-      lineinfile:
-        path: /usr/lib/systemd/system/kodi.service
-        line: "User = admin"
-        regexp: "^User"
-
-    - name: Modification group kodi service
-      lineinfile:
-        path: /usr/lib/systemd/system/kodi.service
-        line: "Group = admin"
-        regexp: "^Group"
-
-    - name: Activation service Kodi
-      service: name=kodi state=started enabled=yes
-
+# Autologin  
     - name: Autologin admin
       lineinfile: 
         path: /etc/lightdm/lightdm.conf
         line: "autologin-user=admin"   
         insertafter: "#exit-on-failure=false"
 
+# Preconfiguration Kodi
     - name: Copie du fichier sources.xml
       copy:
         src: sources.xml
