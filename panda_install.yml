@@ -6,6 +6,9 @@
     secretpassword: "{{ secretpassword_content.stdout }}"
 
   tasks:
+    - name: Application du hostname Panda
+      hostname: name=Panda
+
     - name: Mise a jour distrib
       apt: upgrade=dist update_cache=yes
 
@@ -153,6 +156,17 @@
     - name: Demarrage service mariadb
       service: name=mariadb state=started enabled=yes
 
+# Firefox
+    - name: Desinstallation de Chromium 
+      apt: 
+        name: "{{ item }}"
+        state: absent
+      with_items:
+          - chromium
+          - chromium-common
+
+    - name: Installation de Firefox
+      apt: name=firefox-esr state=present
 # Configuration du mot de pssse root pour mariadb
     - name: Creation du compte admin avec le password genere
       mysql_user: name=admin host=localhost password={{ hpassword }} priv='*.*:ALL,GRANT'
@@ -276,6 +290,18 @@
         path: /home/admin/.kodi/userdata/guisettings.xml
         line: "<audiodevice>PULSE:alsa_output.platform-aml_m8_snd.45.analog-stereo</audiodevice>"
         regexp: "audiodevice"
+
+    - name: Installation des plugins emby pour kodi
+      unarchive:
+        src: emby_addons.tgz
+        dest: /home/admin/.kodi/addons/
+
+    - name: Configuration du plugin emby pour kodi 
+      copy: 
+        src: addon_data_emby.settings.xml
+        dest: /home/admin/.kodi/userdata/addon_data/plugin.video.emby/settings.xml
+        owner: admin
+        group: admin
 
 # Ajout de Samba
     - name: Installation de Samba
@@ -468,6 +494,28 @@
         mode: g+s
         recurse: yes
 
+# LocalPandaHome
+    - name: Recuperation de PandaHome
+      git:
+        repo: "https://github.com/MyPandaCloud/localpandahome.git"
+        dest: "/var/www/html/localpandahome"
+        update: yes 
+
+    - name: Copie de l icone
+      copy:  
+        src: pandahome.png
+        dest: /usr/share/icons/pandahome.png
+        owner: admin
+        group: admin
+
+    - name: Creation du raccourcis desktop
+      copy:
+        src: pandahome.desktop
+        dest: /home/admin/Desktop/pandahome.desktop
+        owner: admin
+        group: admin
+        mode: 0755
+
 # A la fin on rescan Nextcloud
 
     - name: Nextcloud Rescan
@@ -476,4 +524,5 @@
         chdir: /var/www/html/nextcloud/
       become: true
       become_user: www-data
+
 
