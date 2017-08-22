@@ -101,6 +101,45 @@
     - name: Installation Apache2 
       apt: name=apache2 state=present
 
+# Apache2
+    - name: Apache2 port 8081
+      lineinfile:
+        name: /etc/apache2/ports.conf
+        line: "Listen 8081"
+        regexp: "^Listen 80"
+
+    - name: Apache2 port 8082
+      lineinfile:
+        name: /etc/apache2/ports.conf
+        line: "Listen 8082"
+        insertafter: "Listen 8081"
+
+    - name: Apache2 port 8083
+      lineinfile:
+        name: /etc/apache2/ports.conf
+        line: "Listen 8083"
+        insertafter: "Listen 8082"
+
+    - name: Restart apache2
+      service: name=apache2 state=restarted
+
+# Apache2 vhost    
+    - name: Copie {{ item }} vhost file
+      copy: src={{ item }}.vhost.conf dest=/etc/apache2/sites-available/{{ item }}.conf
+      with_items:
+        - ampache
+        - nextcloud
+        - zoneminder
+
+    - name: a2ensite {{ item }} 
+      command: a2ensite {{ item }} 
+      args:
+        creates: /etc/apache2/sites-enabled/{{ item }}.conf
+      with_items:
+        - ampache
+        - nextcloud
+        - zoneminder
+
     - name: Installation PHP
       apt: name={{ item }} state=present
       with_items:
@@ -155,6 +194,25 @@
 
     - name: Demarrage service mariadb
       service: name=mariadb state=started enabled=yes
+
+# Reverse Proxy Nginx
+    - name: Desinstallation Nginx-Full
+      apt: name=nginx-full state=absent
+
+    - name: Installation Nginx-Light
+      apt: name=nginx-light state=present
+
+    - name: Copie fichier nginx.conf
+      copy: src=nginx.conf dest=/etc/nginx/nginx.conf
+
+    - name: Copie proxy.conf
+      copy: src=proxy.conf dest=/etc/nginx/conf.d/proxy.conf
+
+    - name: Copie default
+      copy: src=nginx.default dest=/etc/nginx/sites-enabled/default
+
+    - name: Start Nginx
+      service: name=nginx state=restarted enabled=yes
 
 # Firefox
     - name: Desinstallation de Chromium 
@@ -233,7 +291,8 @@
       git:
         repo: "https://github.com/ampache/ampache.git"
         dest: "/var/www/html/ampache"
-        update: no
+        version: master
+        update: no 
 
     - name: Composer install of Ampache
       composer:

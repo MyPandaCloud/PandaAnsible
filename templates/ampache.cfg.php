@@ -31,7 +31,7 @@ config_version = 34
 ; if it is located at http://localhost/music you need to
 ; set web_path to /music
 ; DEFAULT: ""
-web_path = "/ampache"
+;web_path = "/ampache"
 
 ; The local http url of your server.
 ; If not set, retrieved automatically from server information.

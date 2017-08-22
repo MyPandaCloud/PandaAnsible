@@ -1,0 +1,65 @@
+server {
+        listen   80;
+        server_name  meudon.mypanda.cloud;
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+	
+	error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+                root   /var/www/nginx-default;
+        }
+}
+server {
+        listen   80;
+        server_name  emby.meudon.mypanda.cloud;
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+        location / {
+                proxy_pass         http://127.0.0.1:8096/;
+        }
+}
+server {
+        listen   80;
+        server_name  homeassistant.meudon.mypanda.cloud;
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+        location / {
+                proxy_pass         http://127.0.0.1:8123/;
+        }
+}
+server {
+        listen   80;
+        server_name  transmission.meudon.mypanda.cloud;
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+        location / {
+                proxy_pass         http://127.0.0.1:9091/;
+        }
+}
+server {
+        listen   80;
+        server_name  ampache.meudon.mypanda.cloud;
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+        location / {
+                proxy_pass         http://127.0.0.1:8081/;
+        }
+}
+server {
+        listen   80;
+        server_name  nextcloud.meudon.mypanda.cloud;
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+        location / {
+                proxy_pass         http://127.0.0.1:8082/;
+        }
+}
+server {
+        listen   80;
+        server_name  zoneminder.meudon.mypanda.cloud;
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+        location / {
+                proxy_pass         http://127.0.0.1:8083/;
+        }
+}
