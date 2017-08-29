@@ -4,6 +4,5 @@ Type=Link
 Name=PandaHome
 Comment=
 Icon=/usr/share/icons/pandahome.png
-URL=http://meudon.mypanda.cloud/
+URL=http://{{ FQDN }}/
 GenericName=Panda Home
-

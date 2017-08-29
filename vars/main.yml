@@ -1,0 +1,8 @@
+---
+hpassword: "{{ hpassword_content.stdout  }}"
+secretpassword: "{{ secretpassword_content.stdout }}"
+pandaname: "{{ pandaname_content.stdout }}"
+username: "admin"
+userpassword: "{{ userpassword_content.stdout }}"
+ampachedbhash: "{{ ampachedbhash_content }}"
+FQDN: "{{ pandaname }}.mypanda.cloud"

@@ -1,23 +1,27 @@
 ---
 - name: HoneyBox Installation Playbook
   hosts: all
-  vars:
-    hpassword: "{{ hpassword_content.stdout  }}"
-    secretpassword: "{{ secretpassword_content.stdout }}"
-    pandaname: "{{ pandaname_content.stdout }}"
-
   tasks:
-    - name: Application du hostname Panda
-      hostname: name=Panda
-
-    - name: Mise a jour distrib
-      apt: upgrade=dist update_cache=yes
-
 # Creation du FQDN
     - name: Choix d'un nom
       shell: sort -R dico | head -1 | xargs -I {} sed -i -e '/{}/w dico.used' -e '//d' dico
       register: pandaname_content
       when: pandaname is not defined
+
+    - name: On s assure que pandaname n est pas vide
+      assert:
+        that:
+          - {{ pandaname }} is defined
+          - {{ FQDN }} is defined
+        msg: pandaname or FQDN is not defined
+
+# Hostname
+    - name: Application du hostname Panda
+      hostname: name={{ pandaname }}
+
+# MAJ distrib
+    - name: Mise a jour distrib
+      apt: upgrade=dist update_cache=yes
 
 # Utilisation de systemd pour networking
     - name: Desinstallation isc-dhcp
@@ -75,29 +79,51 @@
         state: mounted
 
 # Installations des composants necessaires
-    - name: Generation du mot de passe aleatoire
+    - name: Generation du mot de passe aleatoire admin
       shell: "openssl rand -base64 16 > /root/hpassword"
-      args:      
-        creates: /root/hpassword 
+      no_log: True
+      args:
+        creates: /root/hpassword
 
-    - name: Generate secret password
+    - name: Generation du mot de passe aleatoire user
+      shell: "openssl rand -base64 8 > /home/{{ username }}/userpassword"
+      no_log: True
+      args:
+        creates: /home/{{ username }}/userpassword
+
+    - name: Generation du hash pour DB ampache
+      shell: mysql -NBe "select password('{{ userpassword }}')"
+      no_log: True
+      register: ampachedbhash_content
+
+    - name: Generate secret password for ampache.cfg
       shell: "openssl rand -base64 48"
       register: secretpassword_content
+      no_log: True
       args:
         creates: /var/www/html/ampache/config/ampache.cfg.php
 
     - name: Changement permissions /root/hpassword
       file: path=/root/hpassword owner=root group=root mode=0600
 
+    - name: Changement permissions /home/{{ username }}/userpassword
+      file: path=/home/{{ username }}/userpassword owner={{ username }} group=root mode=0600
+
     - name: Put hpassword in variable
       shell: "cat /root/hpassword"
       register: hpassword_content
+      no_log: True
+
+    - name: Put hpassword in variable
+      shell: "cat /home/{{ username }}/userpassword"
+      register: userpassword_content
+      no_log: True
 
     - name: Installation sudo
       apt: name=sudo state=present
 
     - name: Installation de Git
-      apt: name=git state=present 
+      apt: name=git state=present
 
     - name: Installation de Pip
       apt: name=python3-pip state=present
@@ -105,7 +131,7 @@
     - name: Installation de Composer
       apt: name=composer state=present
 
-    - name: Installation Apache2 
+    - name: Installation Apache2
       apt: name=apache2 state=present
 
 # Apache2
@@ -128,17 +154,17 @@
     - name: Restart apache2
       service: name=apache2 state=restarted
 
-# Apache2 vhost    
+# Apache2 vhost
     - name: Copie {{ item }} vhost file
-      copy: src={{ item }}.vhost.conf dest=/etc/apache2/sites-available/{{ item }}.conf
+      template: src={{ item }}.vhost.conf dest=/etc/apache2/sites-available/{{ item }}.conf
       with_items:
         - ampache
         - nextcloud
         - zoneminder
         - pandahomepage
 
-    - name: a2ensite {{ item }} 
-      command: a2ensite {{ item }} 
+    - name: a2ensite {{ item }}
+      command: a2ensite {{ item }}
       args:
         creates: /etc/apache2/sites-enabled/{{ item }}.conf
       with_items:
@@ -150,7 +176,7 @@
     - name: Ajout hosts
       lineinfile:
          name: /etc/hosts
-         line: "127.0.0.1 localhost panda meudon.mypanda.cloud emby.meudon.mypanda.cloud ampache.meudon.mypanda.cloud nextcloud.meudon.mypanda.cloud homeassistant.meudon.mypanda.cloud zoneminder.meudon.mypanda.cloud transmission.meudon.mypanda.cloud"
+         line: "127.0.0.1 localhost {{ pandaname }} {{ FQDN }} emby.{{ FQDN }} ampache.{{ FQDN }} nextcloud.{{ FQDN }} homeassistant.{{ FQDN }} zoneminder.{{ FQDN }} transmission.{{ FQDN }}"
 
     - name: Installation PHP
       apt: name={{ item }} state=present
@@ -195,7 +221,7 @@
     - name: Ajout du user debian-transmission dans le group www-data
       user: name=debian-transmission groups=www-data append=yes
 
-    - name: Installation python-mysqldb 
+    - name: Installation python-mysqldb
       apt: name=python-mysqldb state=present
 
     - name: Installation de mariadb-server
@@ -221,7 +247,7 @@
       copy: src=proxy.conf dest=/etc/nginx/conf.d/proxy.conf
 
     - name: Copie default
-      copy: src=nginx.default dest=/etc/nginx/sites-enabled/default
+      template: src=nginx.default dest=/etc/nginx/sites-enabled/default
 
     - name: Start Nginx
       service: name=nginx state=restarted enabled=yes
@@ -234,8 +260,8 @@
       command: upnpc -a 192.168.1.33 9292 9292 TCP
 
 # Firefox
-    - name: Desinstallation de Chromium 
-      apt: 
+    - name: Desinstallation de Chromium
+      apt:
         name: "{{ item }}"
         state: absent
       with_items:
@@ -262,13 +288,13 @@
       copy:
         src: php.ini
         dest: /etc/php/7.0/apache2/php.ini
-      
+
     - name: Restart Apache2
       service: name=apache2 state=restarted
-    
-    - name: Nextcloud git clone 
-      git: 
-        repo: "https://github.com/nextcloud/server.git" 
+
+    - name: Nextcloud git clone
+      git:
+        repo: "https://github.com/nextcloud/server.git"
         dest: "/var/www/html/nextcloud"
         update: no
 
@@ -279,16 +305,16 @@
       file: dest=/data/nextcloud state=directory owner=www-data group=www-data
 
     - name: Nextcloud installation
-      shell: "php occ  maintenance:install --database 'mysql' --database-name 'nextcloud' --database-user 'admin' --database-pass '{{ hpassword }}' --admin-user 'admin' --admin-pass 'admin' --data-dir '/data/nextcloud'" 
+      shell: "php occ  maintenance:install --database 'mysql' --database-name 'nextcloud' --database-user 'admin' --database-pass '{{ hpassword }}' --admin-user 'admin' --admin-pass 'admin' --data-dir '/data/nextcloud'"
       args:
         chdir: /var/www/html/nextcloud/
-        creates: /var/www/html/nextcloud/config/config.php 
+        creates: /var/www/html/nextcloud/config/config.php
       become: true
       become_user: www-data
 
     - name: Nextcloud => Ajout trusted_domains dans config.php
       blockinfile:
-        path: /var/www/html/nextcloud/config/config.php 
+        path: /var/www/html/nextcloud/config/config.php
         content: |
           'trusted_domains' =>
            array (
@@ -296,7 +322,7 @@
            1 => 'server1.example.com',
            2 => '{{ inventory_hostname  }}',
            3 => '{{ ansible_default_ipv4.address }}',
-           4 => 'nextcloud.meudon.mypanda.cloud',
+           4 => 'nextcloud.{{ FQDN }}',
            ),
         insertbefore: '\);'
         marker: "// {mark} ANSIBLE MANAGED BLOCK"
@@ -312,7 +338,7 @@
         repo: "https://github.com/ampache/ampache.git"
         dest: "/var/www/html/ampache"
         version: master
-        update: no 
+        update: no
 
     - name: Composer install of Ampache
       composer:
@@ -324,23 +350,23 @@
     - name: Chown www-data to ampache directory
       file: path="/var/www/html" owner="www-data" group="www-data" recurse=yes
 
-    - name: Application des droits sur /data/nextcloud/admin/files/ 
-      file: path="/data/nextcloud/admin/files/" state=directory owner=www-data group=www-data mode=0775 recurse=yes
+    - name: Application des droits sur /data/nextcloud/{{ username }}/files/
+      file: path="/data/nextcloud/{{ username }}/files/" state=directory owner=www-data group=www-data mode=0775 recurse=yes
 
     - name: Creation du dossier musique dans Nextcloud pour Ampache
-      file: path="/data/nextcloud/admin/files/Music" state=directory owner=www-data group=www-data
+      file: path="/data/nextcloud/{{ username }}/files/Music" state=directory owner=www-data group=www-data
 
     - name: Creation du dossier Series dans Nextcloud pour Ampache
-      file: path="/data/nextcloud/admin/files/Series" state=directory owner=www-data group=www-data
+      file: path="/data/nextcloud/{{ username }}/files/Series" state=directory owner=www-data group=www-data
 
     - name: Creation du dossier Films dans Nextcloud pour Ampache
-      file: path="/data/nextcloud/admin/files/Movies" state=directory owner=www-data group=www-data
+      file: path="/data/nextcloud/{{ username }}/files/Movies" state=directory owner=www-data group=www-data
 
     - name: Creation du dossier Transmission dans Nextcloud pour Transmission
-      file: path="/data/nextcloud/admin/files/Transmission" state=directory owner=www-data group=www-data mode=0775
- 
+      file: path="/data/nextcloud/{{ username }}/files/Transmission" state=directory owner=www-data group=www-data mode=0775
+
     - name: Creation du dossier incomplete dans Nextcloud pour Transmission
-      file: path="/data/nextcloud/admin/files/Transmission/incomplete" state=directory owner=www-data group=www-data mode=0775
+      file: path="/data/nextcloud/{{ username }}/files/Transmission/incomplete" state=directory owner=www-data group=www-data mode=0775
 
     - name: Installer cron
       apt: name=cron state=present
@@ -351,50 +377,50 @@
         minute: "*/15"
         job: "cd /var/www/html/nextcloud/; sudo -u www-data php occ files:scan --all"
 
-# Autologin  
-    - name: Autologin admin
-      lineinfile: 
+# Autologin
+    - name: Autologin {{ username }}
+      lineinfile:
         path: /etc/lightdm/lightdm.conf
-        line: "autologin-user=admin"   
+        line: "autologin-user={{ username }}"
         insertafter: "#exit-on-failure=false"
 
 # Preconfiguration Kodi
     - name: Copie du fichier sources.xml
       copy:
         src: sources.xml
-        dest: /home/admin/.kodi/userdata/sources.xml
+        dest: /home/{{ username }}/.kodi/userdata/sources.xml
 
-    - name: Configuration audio 
+    - name: Configuration audio
       lineinfile:
-        path: /home/admin/.kodi/userdata/guisettings.xml
+        path: /home/{{ username }}/.kodi/userdata/guisettings.xml
         line: "<audiodevice>PULSE:alsa_output.platform-aml_m8_snd.45.analog-stereo</audiodevice>"
         regexp: "audiodevice"
 
     - name: Installation des plugins emby pour kodi
       unarchive:
         src: emby_addons.tgz
-        dest: /home/admin/.kodi/addons/
+        dest: /home/{{ username }}/.kodi/addons/
 
-    - name: Configuration du plugin emby pour kodi 
-      copy: 
+    - name: Configuration du plugin emby pour kodi
+      copy:
         src: addon_data_emby.settings.xml
-        dest: /home/admin/.kodi/userdata/addon_data/plugin.video.emby/settings.xml
-        owner: admin
-        group: admin
+        dest: /home/{{ username }}/.kodi/userdata/addon_data/plugin.video.emby/settings.xml
+        owner: {{ username }}n
+        group: {{ username }}
 
 # Ajout de Samba
     - name: Installation de Samba
       apt: name=samba state=present
 
-    - name: Ajout user admin dans group www-data
-      user: name=admin groups=www-data append=yes
- 
+    - name: Ajout user {{ username }} dans group www-data
+      user: name={{ username }} groups=www-data append=yes
+
     - name: Creation map.txt
-      blockinfile: 
+      blockinfile:
         path: /root/map.txt
         create: yes
         content: |
-          admin = admin
+          {{ username }} = {{ username }}
 
     - name: Droits sur map.txt
       file: path=/root/map.txt owner=root group=root mode=0600
@@ -405,26 +431,20 @@
         content: |
           [Panda]
              comment = PandaShare
-             path = /data/nextcloud/admin/files/
+             path = /data/nextcloud/{{ username }}/files/
              browseable = yes
              create mask = 0660
              directory mask = 0770
              readonly = no
              valid users = @www-data
-#             username map = /root/map.txt
-#             valid users = admin
- #            public = yes
 
-#TO DO Extract & Vault Password
     - name: Ajout Samba User
-      shell: (echo admin; echo admin) | smbpasswd -a -s admin
+      shell: (echo {{ userpassword }}; echo {{ userpassword }}) | smbpasswd -a -s {{ username }}
 
     - name: Redemarrage de samba
       service: name=smbd state=restarted enabled=yes
 
-
 # Configuration de Ampache
- 
     - name: Creation Ampache DB
       mysql_db:
         state: import
@@ -441,7 +461,7 @@
       template:
         src: insertampacheadmin.sql
         dest: /tmp
-    
+
     - name: Lancement script creation admin ampache
       mysql_db:
         name: ampache
@@ -456,15 +476,15 @@
 
 # Configuration de transmission
     - name: Modification download-dir Transmission
-      lineinfile: 
+      lineinfile:
         dest: /etc/transmission-daemon/settings.json
-        line: '    "download-dir": "/data/nextcloud/admin/files/Transmission",'
+        line: '    "download-dir": "/data/nextcloud/{{ username }}/files/Transmission",'
         regexp: '    "download-dir"'
 
     - name: Modification incomplete-dir Transmission
       lineinfile:
         dest: /etc/transmission-daemon/settings.json
-        line: '    "incomplete-dir": "/data/nextcloud/admin/files/Transmission/incomplete",'
+        line: '    "incomplete-dir": "/data/nextcloud/{{ username }}/files/Transmission/incomplete",'
         regexp: '    "incomplete-dir"'
 
     - name: Modification incomplete-dir-enabled Transmission
@@ -476,13 +496,13 @@
     - name: Modification rpc-username Transmission
       lineinfile:
         dest: /etc/transmission-daemon/settings.json
-        line: '    "rpc-username": "admin",'
+        line: '    "rpc-username": "{{ username }}",'
         regexp: '    "rpc-username"'
 
     - name: Modification rpc-password Transmission
       lineinfile:
         dest: /etc/transmission-daemon/settings.json
-        line: '    "rpc-password": "admin",'
+        line: '    "rpc-password": "{{ hpassword }}",'
         regexp: '    "rpc-password"'
 
     - name: Modification rpc-whitelist-enabled Transmission
@@ -525,10 +545,10 @@
       apt: deb="http://www.deb-multimedia.org/pool/main/d/deb-multimedia-keyring/deb-multimedia-keyring_2016.8.1_all.deb" state=present
 
     - name: APT Dist-Upgrade
-      apt: upgrade=dist update_cache=yes       
- 
+      apt: upgrade=dist update_cache=yes
+
     - name: Installation Zoneminder
-      apt: name={{ item }} state=present update_cache=yes 
+      apt: name={{ item }} state=present update_cache=yes
       with_items:
         - zoneminder
         - vlc-plugin-base
@@ -540,7 +560,7 @@
       file: src=/usr/share/zoneminder/www dest=/var/www/html/zoneminder state=link
 
     - name: /usr/share/zoneminder permissions
-      file: path="/usr/share/zoneminder" owner="www-data" group="www-data" recurse=yes 
+      file: path="/usr/share/zoneminder" owner="www-data" group="www-data" recurse=yes
 
 # Home Assistant suite
     - name: Activation du service Home Assistant
@@ -553,30 +573,30 @@
         update: no
 
     - name: Creation du dossier Photos
-      file: path="/data/nextcloud/admin/files/Photos" state=directory owner=www-data group=www-data
+      file: path="/data/nextcloud/{{ username }}/files/Photos" state=directory owner=www-data group=www-data
 
     - name: Creation du dossier Generated
-      file: path="/data/nextcloud/admin/Generated" state=directory owner=www-data group=www-data
+      file: path="/data/nextcloud/{{ username }}/Generated" state=directory owner=www-data group=www-data
 
     - name: Creation du dossier Thumbs
-      file: path="/data/nextcloud/admin/Generated/Thumbs" state=directory owner=www-data group=www-data
+      file: path="/data/nextcloud/{{ username }}/Generated/Thumbs" state=directory owner=www-data group=www-data
 
     - name: Modification des chemins dans le ficher config.php de PhotoShow
       lineinfile:
         dest: /var/www/html/photoshow/config.php
-        line: '$config->photos_dir   = "/data/nextcloud/admin/files/Photos";'
+        line: '$config->photos_dir   = "/data/nextcloud/{{ username }}/files/Photos";'
         regexp: 'config->photos_dir'
 
     - name: Modification des chemins dans le ficher config.php de PhotoShow
       lineinfile:
         dest: /var/www/html/photoshow/config.php
-        line: '$config->ps_generated   = "/data/nextcloud/admin/Generated";'
+        line: '$config->ps_generated   = "/data/nextcloud/{{ username }}/Generated";'
         regexp: 'config->ps_generated'
 
-# Droits 
-    - name: Ajout du s sur /data/nextcloud/admin/files/
-      file: 
-        path: /data/nextcloud/admin/files/
+# Droits
+    - name: Ajout du s sur /data/nextcloud/{{ username }}/files/
+      file:
+        path: /data/nextcloud/{{ username }}/files/
         group: www-data
         mode: g+s
         recurse: yes
@@ -586,21 +606,21 @@
       git:
         repo: "https://github.com/MyPandaCloud/localpandahome.git"
         dest: "/var/www/html/localpandahome"
-        update: yes 
+        update: yes
 
     - name: Copie de l icone
-      copy:  
+      copy:
         src: pandahome.png
         dest: /usr/share/icons/pandahome.png
-        owner: admin
-        group: admin
+        owner: {{ username }}
+        group: {{ username }}
 
     - name: Creation du raccourcis desktop
-      copy:
+      template:
         src: pandahome.desktop
-        dest: /home/admin/Desktop/pandahome.desktop
-        owner: admin
-        group: admin
+        dest: /home/{{ username }}/Desktop/pandahome.desktop
+        owner: {{ username }}
+        group: {{ username }}
         mode: 0755
 
 # A la fin on rescan Nextcloud
@@ -611,5 +631,3 @@
         chdir: /var/www/html/nextcloud/
       become: true
       become_user: www-data
-
-

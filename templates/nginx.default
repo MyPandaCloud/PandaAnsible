@@ -3,7 +3,7 @@ server {
         server_name  localhost;
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
-	
+
 	error_page   500 502 503 504  /50x.html;
         location = /50x.html {
                 root   /var/www/nginx-default;
@@ -13,7 +13,7 @@ server {
 server {
         listen   80;
         listen   9292;
-        server_name  meudon.mypanda.cloud;
+        server_name  {{ FQDN }};
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
         location / {
@@ -23,7 +23,7 @@ server {
 server {
         listen   80;
         listen   9292;
-        server_name  emby.meudon.mypanda.cloud;
+        server_name  emby.{{ FQDN }};
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
         location / {
@@ -33,7 +33,7 @@ server {
 server {
         listen   80;
         listen   9292;
-        server_name  homeassistant.meudon.mypanda.cloud;
+        server_name  homeassistant.{{ FQDN }};
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
 	proxy_set_header Connection $connection_upgrade;
@@ -43,13 +43,13 @@ server {
         	proxy_http_version 1.1;
         	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         	proxy_set_header Upgrade $http_upgrade;
-        	proxy_set_header Connection $connection_upgrade;        
+        	proxy_set_header Connection $connection_upgrade;
 	}
 }
 server {
         listen   80;
         listen   9292;
-        server_name  transmission.meudon.mypanda.cloud;
+        server_name  transmission.{{ FQDN }};
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
         location / {
@@ -59,7 +59,7 @@ server {
 server {
         listen   80;
         listen   9292;
-        server_name  ampache.meudon.mypanda.cloud;
+        server_name  ampache.{{ FQDN }};
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
         location / {
@@ -69,7 +69,7 @@ server {
 server {
         listen   80;
         listen   9292;
-        server_name  nextcloud.meudon.mypanda.cloud;
+        server_name  nextcloud.{{ FQDN }};
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
         location / {
@@ -79,7 +79,7 @@ server {
 server {
         listen   80;
         listen   9292;
-        server_name  zoneminder.meudon.mypanda.cloud;
+        server_name  zoneminder.{{ FQDN }};
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
         location / {
