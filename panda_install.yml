@@ -176,7 +176,7 @@
     - name: Ajout hosts
       lineinfile:
          name: /etc/hosts
-         line: "127.0.0.1 localhost {{ pandaname }} {{ FQDN }} emby.{{ FQDN }} ampache.{{ FQDN }} nextcloud.{{ FQDN }} homeassistant.{{ FQDN }} zoneminder.{{ FQDN }} transmission.{{ FQDN }}"
+         line: "127.0.0.1 localhost {{ pandaname }} {{ FQDN }} emby.{{ FQDN }} ampache.{{ FQDN }} nextcloud.{{ FQDN }} homeassistant.{{ FQDN }} zoneminder.{{ FQDN }} transmission.{{ FQDN }} "
 
     - name: Installation PHP
       apt: name={{ item }} state=present
