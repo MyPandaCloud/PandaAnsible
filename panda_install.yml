@@ -252,6 +252,19 @@
     - name: Start Nginx
       service: name=nginx state=restarted enabled=yes
 
+# HTTPS
+    - name: Installation Certbot
+      apt: name=certbot state=present
+
+    - name: Create certs
+      shell: certbot certonly --webroot -w /var/www/html/ -d {{ FQDN }} -d emby.{{ FQDN }} -d nextcloud.{{ FQDN }} -d ampache.{{ FQDN }} -d homeassistant.{{ FQDN }} -d zoneminder.{{ FQDN }} -d transmission.{{ FQDN }}
+
+    - name: Crontab certbot
+      cron:
+        name: Certbot Renew
+        job: "certbot renew --renew-hook 'service nginx reload'"
+        day: 10
+        
 # UPnP
     - name: Installation miniupnpc
       apt: name=miniupnpc state=present
