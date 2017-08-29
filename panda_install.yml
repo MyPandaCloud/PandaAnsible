@@ -4,6 +4,7 @@
   vars:
     hpassword: "{{ hpassword_content.stdout  }}"
     secretpassword: "{{ secretpassword_content.stdout }}"
+    pandaname: "{{ pandaname_content.stdout }}"
 
   tasks:
     - name: Application du hostname Panda
@@ -11,6 +12,12 @@
 
     - name: Mise a jour distrib
       apt: upgrade=dist update_cache=yes
+
+# Creation du FQDN
+    - name: Choix d'un nom
+      shell: sort -R dico | head -1 | xargs -I {} sed -i -e '/{}/w dico.used' -e '//d' dico
+      register: pandaname_content
+      when: pandaname is not defined
 
 # Utilisation de systemd pour networking
     - name: Desinstallation isc-dhcp
