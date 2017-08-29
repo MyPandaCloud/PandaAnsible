@@ -1,6 +1,6 @@
 server {
         listen   80;
-        server_name  meudon.mypanda.cloud;
+        server_name  localhost;
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
 	
@@ -9,8 +9,20 @@ server {
                 root   /var/www/nginx-default;
         }
 }
+
 server {
         listen   80;
+        listen   9292;
+        server_name  meudon.mypanda.cloud;
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+        location / {
+                proxy_pass         http://127.0.0.1:8084/;
+        }
+}
+server {
+        listen   80;
+        listen   9292;
         server_name  emby.meudon.mypanda.cloud;
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
@@ -20,15 +32,23 @@ server {
 }
 server {
         listen   80;
+        listen   9292;
         server_name  homeassistant.meudon.mypanda.cloud;
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
+	proxy_set_header Connection $connection_upgrade;
         location / {
                 proxy_pass         http://127.0.0.1:8123/;
-        }
+		proxy_set_header Host $host;
+        	proxy_http_version 1.1;
+        	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        	proxy_set_header Upgrade $http_upgrade;
+        	proxy_set_header Connection $connection_upgrade;        
+	}
 }
 server {
         listen   80;
+        listen   9292;
         server_name  transmission.meudon.mypanda.cloud;
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
@@ -38,6 +58,7 @@ server {
 }
 server {
         listen   80;
+        listen   9292;
         server_name  ampache.meudon.mypanda.cloud;
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
@@ -47,6 +68,7 @@ server {
 }
 server {
         listen   80;
+        listen   9292;
         server_name  nextcloud.meudon.mypanda.cloud;
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;
@@ -56,6 +78,7 @@ server {
 }
 server {
         listen   80;
+        listen   9292;
         server_name  zoneminder.meudon.mypanda.cloud;
         access_log  /var/log/nginx/proxy_access.log;
         error_log  /var/log/nginx/proxy_error.log;

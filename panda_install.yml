@@ -102,23 +102,21 @@
       apt: name=apache2 state=present
 
 # Apache2
-    - name: Apache2 port 8081
+    - name: Apache2 enlever port 80
       lineinfile:
         name: /etc/apache2/ports.conf
-        line: "Listen 8081"
-        regexp: "^Listen 80"
+        line: "Listen 80"
+        state: absent
 
-    - name: Apache2 port 8082
-      lineinfile:
+    - name: Apache2 port 8081 a 8083
+      blockinfile:
         name: /etc/apache2/ports.conf
-        line: "Listen 8082"
-        insertafter: "Listen 8081"
-
-    - name: Apache2 port 8083
-      lineinfile:
-        name: /etc/apache2/ports.conf
-        line: "Listen 8083"
-        insertafter: "Listen 8082"
+        insertbefore: "<IfModule ssl_module>"
+        block: |
+          Listen 8081
+          Listen 8082
+          Listen 8083
+          Listen 8084
 
     - name: Restart apache2
       service: name=apache2 state=restarted
@@ -130,6 +128,7 @@
         - ampache
         - nextcloud
         - zoneminder
+        - pandahomepage
 
     - name: a2ensite {{ item }} 
       command: a2ensite {{ item }} 
@@ -139,6 +138,12 @@
         - ampache
         - nextcloud
         - zoneminder
+        - pandahomepage
+
+    - name: Ajout hosts
+      lineinfile:
+         name: /etc/hosts
+         line: "127.0.0.1 localhost panda meudon.mypanda.cloud emby.meudon.mypanda.cloud ampache.meudon.mypanda.cloud nextcloud.meudon.mypanda.cloud homeassistant.meudon.mypanda.cloud zoneminder.meudon.mypanda.cloud transmission.meudon.mypanda.cloud"
 
     - name: Installation PHP
       apt: name={{ item }} state=present
@@ -214,6 +219,13 @@
     - name: Start Nginx
       service: name=nginx state=restarted enabled=yes
 
+# UPnP
+    - name: Installation miniupnpc
+      apt: name=miniupnpc state=present
+
+    - name: Ouverture port 9292 UPnP
+      command: upnpc -a 192.168.1.33 9292 9292 TCP
+
 # Firefox
     - name: Desinstallation de Chromium 
       apt: 
@@ -277,6 +289,7 @@
            1 => 'server1.example.com',
            2 => '{{ inventory_hostname  }}',
            3 => '{{ ansible_default_ipv4.address }}',
+           4 => 'nextcloud.meudon.mypanda.cloud',
            ),
         insertbefore: '\);'
         marker: "// {mark} ANSIBLE MANAGED BLOCK"
@@ -476,7 +489,15 @@
 
 # Home Assistant
     - name: Installation python-setuptools
-      apt: name=python3-setuptools state=present
+      apt: name={{ item }} state=present
+      with_items:
+        - python3-setuptools
+        - python3-dev
+
+    - name: Installation de Home Assistant
+      pip:
+        name: wheel
+        executable: pip3
 
     - name: Installation de Home Assistant
       pip:
