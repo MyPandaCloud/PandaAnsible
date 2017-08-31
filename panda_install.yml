@@ -1,22 +1,42 @@
 ---
-- name: HoneyBox Installation Playbook
-  hosts: all
+- name: Vars
+  hosts: localhost
+  vars_files:
+    - vars/main.yml
+  become: true 
+  become_user: root
   tasks:
 # Creation du FQDN
-    - name: Choix d'un nom
-      shell: sort -R dico | head -1 | xargs -I {} sed -i -e '/{}/w dico.used' -e '//d' dico
-      register: pandaname_content
-      when: pandaname is not defined
+    - name: Utilisation du nom en extra-vars
+      set_fact:
+        pandaname: "{{ mypandaname }}"
+      when: mypandaname is defined
 
-    - name: On s assure que pandaname n est pas vide
+    - name: Creation d'un nom
+      shell: "shuf -n 1 files/dico | xargs -I {} sed -i -e '/{}/w/dev/stdout' -e '//d' files/dico | tee -a files/dico.used"
+      register: pandaname_content
+      when: mypandaname is undefined or mypandaname == ""
+
+    - debug:
+        msg: "{{ item }}"
+      with_items:
+        - "{{ pandaname }}"
+        - "{{ FQDN }}"
+
+    - name: On s assure que pandaname et fqdn ne sont pas vide
       assert:
         that:
-          - {{ pandaname }} is defined
-          - {{ FQDN }} is defined
-        msg: pandaname or FQDN is not defined
+          - "pandaname is defined"
+          - "FQDN is defined"
+        msg: "pandaname ou FQDN non defini"
 
+- name: Panda Installation Playbook
+  hosts: all
+  vars_files:
+    - vars/main.yml
+  tasks:
 # Hostname
-    - name: Application du hostname Panda
+    - name: Application du hostname {{ pandaname }} 
       hostname: name={{ pandaname }}
 
 # MAJ distrib
@@ -91,6 +111,16 @@
       args:
         creates: /home/{{ username }}/userpassword
 
+    - name: Put hpassword in variable
+      shell: "cat /root/hpassword"
+      register: hpassword_content
+      no_log: True
+
+    - name: Put userpassword in variable
+      shell: "cat /home/{{ username }}/userpassword"
+      register: userpassword_content
+      no_log: True
+
     - name: Generation du hash pour DB ampache
       shell: mysql -NBe "select password('{{ userpassword }}')"
       no_log: True
@@ -108,16 +138,6 @@
 
     - name: Changement permissions /home/{{ username }}/userpassword
       file: path=/home/{{ username }}/userpassword owner={{ username }} group=root mode=0600
-
-    - name: Put hpassword in variable
-      shell: "cat /root/hpassword"
-      register: hpassword_content
-      no_log: True
-
-    - name: Put hpassword in variable
-      shell: "cat /home/{{ username }}/userpassword"
-      register: userpassword_content
-      no_log: True
 
     - name: Installation sudo
       apt: name=sudo state=present
@@ -150,9 +170,6 @@
           Listen 8082
           Listen 8083
           Listen 8084
-
-    - name: Restart apache2
-      service: name=apache2 state=restarted
 
 # Apache2 vhost
     - name: Copie {{ item }} vhost file
@@ -191,6 +208,9 @@
        - php-mysql
        - php-apcu
 
+    - name: Restart apache2
+      service: name=apache2 state=restarted
+    
     - name: Add ubuntu trusty repo
       lineinfile: dest=/etc/apt/sources.list.d/trusty.list line="deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ trusty main restricted multiverse universe" create=yes
 
@@ -230,10 +250,10 @@
        - mariadb-server
        - mariadb-client
 
+# Reverse Proxy Nginx
     - name: Demarrage service mariadb
       service: name=mariadb state=started enabled=yes
 
-# Reverse Proxy Nginx
     - name: Desinstallation Nginx-Full
       apt: name=nginx-full state=absent
 
@@ -252,25 +272,39 @@
     - name: Start Nginx
       service: name=nginx state=restarted enabled=yes
 
+    - name: Installation miniupnpc
+      apt: name=miniupnpc state=present
+
+# UPnP
+    - name: Ouverture port 9292 UPnP
+      command: upnpc -a 192.168.1.33 9292 9292 TCP
+
+    - name: Ouverture port 8888 UPnP
+      command: upnpc -a 192.168.1.33 8888 8888 TCP
+
 # HTTPS
     - name: Installation Certbot
       apt: name=certbot state=present
 
+    - name: Creation .well-known
+      file: name=/var/www/html/.well-known state=directory owner=www-data group=www-data
+
     - name: Create certs
-      shell: certbot certonly --webroot -w /var/www/html/ -d {{ FQDN }} -d emby.{{ FQDN }} -d nextcloud.{{ FQDN }} -d ampache.{{ FQDN }} -d homeassistant.{{ FQDN }} -d zoneminder.{{ FQDN }} -d transmission.{{ FQDN }}
+      shell: certbot -n certonly --webroot -w /var/www/html/ -d {{ FQDN }} -d emby.{{ FQDN }} -d nextcloud.{{ FQDN }} -d ampache.{{ FQDN }} -d homeassistant.{{ FQDN }} -d zoneminder.{{ FQDN }} -d transmission.{{ FQDN }} -m {{ email }}  --agree-tos --http-01-port 8888 --tls-sni-01-port 9292
 
     - name: Crontab certbot
       cron:
         name: Certbot Renew
         job: "certbot renew --renew-hook 'service nginx reload'"
         day: 10
-        
-# UPnP
-    - name: Installation miniupnpc
-      apt: name=miniupnpc state=present
+        hour: 4
+        minute: 47
 
-    - name: Ouverture port 9292 UPnP
-      command: upnpc -a 192.168.1.33 9292 9292 TCP
+    - name: Copie default-ssl
+      template: src=nginx.default-ssl dest=/etc/nginx/sites-enabled/default-ssl
+
+    - name: Restart Nginx
+      service: name=nginx state=restarted
 
 # Firefox
     - name: Desinstallation de Chromium
@@ -418,8 +452,8 @@
       copy:
         src: addon_data_emby.settings.xml
         dest: /home/{{ username }}/.kodi/userdata/addon_data/plugin.video.emby/settings.xml
-        owner: {{ username }}n
-        group: {{ username }}
+        owner: "{{ username }}"
+        group: "{{ username }}"
 
 # Ajout de Samba
     - name: Installation de Samba
@@ -625,15 +659,15 @@
       copy:
         src: pandahome.png
         dest: /usr/share/icons/pandahome.png
-        owner: {{ username }}
-        group: {{ username }}
+        owner: "{{ username }}"
+        group: "{{ username }}"
 
     - name: Creation du raccourcis desktop
       template:
         src: pandahome.desktop
         dest: /home/{{ username }}/Desktop/pandahome.desktop
-        owner: {{ username }}
-        group: {{ username }}
+        owner: "{{ username }}"
+        group: "{{ username }}"
         mode: 0755
 
 # A la fin on rescan Nextcloud

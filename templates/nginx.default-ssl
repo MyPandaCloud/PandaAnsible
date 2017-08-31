@@ -1,0 +1,121 @@
+server {
+        listen   443 ssl;
+        listen   9292 ssl;
+        server_name  {{ FQDN }};
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+
+        ssl_certificate /etc/letsencrypt/live/{{ FQDN }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/{{ FQDN }}/privkey.pem;
+        ssl_stapling on;
+        ssl_stapling_verify on;
+
+        location / {
+                proxy_pass         http://127.0.0.1:8084/;
+        }
+        location /.well-known {
+                alias /var/www/html/.well-known;
+        }
+}
+server {
+        listen   443 ssl;
+        listen   9292 ssl;
+        server_name  emby.{{ FQDN }};
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+
+        ssl_certificate /etc/letsencrypt/live/emby.{{ FQDN }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/emby.{{ FQDN }}/privkey.pem;
+        ssl_stapling on;
+        ssl_stapling_verify on;
+
+        location / {
+                proxy_pass         http://127.0.0.1:8096/;
+        }
+}
+server {
+        listen   443 ssl;
+        listen   9292 ssl;
+        server_name  homeassistant.{{ FQDN }};
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+	      proxy_set_header Connection $connection_upgrade;
+
+        ssl_certificate /etc/letsencrypt/live/homeassistant.{{ FQDN }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/homeassistant.{{ FQDN }}/privkey.pem;
+        ssl_stapling on;
+        ssl_stapling_verify on;
+
+        location / {
+                proxy_pass         http://127.0.0.1:8123/;
+		            proxy_set_header Host $host;
+                proxy_http_version 1.1;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection $connection_upgrade;
+	      }
+}
+server {
+        listen   443 ssl;
+        listen   9292 ssl;
+        server_name  transmission.{{ FQDN }};
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+
+        ssl_certificate /etc/letsencrypt/live/transmission.{{ FQDN }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/transmission.{{ FQDN }}/privkey.pem;
+        ssl_stapling on;
+        ssl_stapling_verify on;
+
+        location / {
+                proxy_pass         http://127.0.0.1:9091/;
+        }
+}
+server {
+        listen   443 ssl;
+        listen   9292 ssl;
+        server_name  ampache.{{ FQDN }};
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+
+        ssl_certificate /etc/letsencrypt/live/ampache.{{ FQDN }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/ampache.{{ FQDN }}/privkey.pem;
+        ssl_stapling on;
+        ssl_stapling_verify on;
+
+        location / {
+                proxy_pass         http://127.0.0.1:8081/;
+        }
+}
+server {
+        listen   443 ssl;
+        listen   9292 ssl;
+        server_name  nextcloud.{{ FQDN }};
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+
+        ssl_certificate /etc/letsencrypt/live/nextcloud.{{ FQDN }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/nextcloud.{{ FQDN }}/privkey.pem;
+        ssl_stapling on;
+        ssl_stapling_verify on;
+
+        location / {
+                proxy_pass         http://127.0.0.1:8082/;
+        }
+}
+server {
+        listen   443 ssl;
+        listen   9292 ssl;
+        server_name  zoneminder.{{ FQDN }};
+        access_log  /var/log/nginx/proxy_access.log;
+        error_log  /var/log/nginx/proxy_error.log;
+
+        ssl_certificate /etc/letsencrypt/live/zoneminder.{{ FQDN }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/zoneminder.{{ FQDN }}/privkey.pem;
+        ssl_stapling on;
+        ssl_stapling_verify on;
+
+        location / {
+                proxy_pass         http://127.0.0.1:8083/;
+        }
+}
