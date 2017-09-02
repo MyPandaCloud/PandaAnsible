@@ -1,0 +1,3 @@
+- src: https://github.com/MyPandaCloud/ansible-rclone.git 
+  version: master
+  name: rclone

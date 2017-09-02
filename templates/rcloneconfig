@@ -1,0 +1,17 @@
+[remote]
+type = swift
+user = {{ vault_os_user  }} 
+key = {{ vault_os_key  }}
+auth = {{ vault_os_auth  }}
+tenant = {{ vault_os_tenant  }}
+domain = {{ vault_os_domain  }}
+tenant_domain = {{ vault_os_tenant_domain  }}
+region = {{ vault_os_region  }}
+auth_version = {{ vault_os_auth_version  }}
+
+[secret]
+type = crypt
+remote = {{ vault_rclone_remote  }}
+filename_encryption = {{ vault_rclone_filename_encryption  }}
+password = {{ vault_rclone_password  }}
+password2 = {{ vault_rclone_password2  }}

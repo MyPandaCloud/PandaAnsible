@@ -10,9 +10,11 @@
     - name: Utilisation du nom en extra-vars
       set_fact:
         pandaname: "{{ mypandaname }}"
+        pandaname_content: 
+          stdout: "{{ mypandaname }}"
       when: mypandaname is defined
 
-    - name: Creation d'un nom
+    - name: Ou creation d'un nom
       shell: "shuf -n 1 files/dico | xargs -I {} sed -i -e '/{}/w/dev/stdout' -e '//d' files/dico | tee -a files/dico.used"
       register: pandaname_content
       when: mypandaname is undefined or mypandaname == ""
@@ -32,9 +34,39 @@
 
 - name: Panda Installation Playbook
   hosts: all
+  roles:
+    - rclone
   vars_files:
     - vars/main.yml
+    - vars/secret.yml
   tasks:
+    - name: Utilisation du nom en extra-vars
+      set_fact:
+        pandaname: "{{ mypandaname }}"
+        pandaname_content:
+          stdout: "{{ mypandaname }}"
+      when: mypandaname is defined
+
+    - name: Ou utilisation du nom cree
+      set_fact:
+        pandaname: "{{ hostvars['localhost']['pandaname_content']['stdout'] }}"
+        pandaname_content:
+          stdout: "{{ hostvars['localhost']['pandaname_content']['stdout'] }}"
+      when: mypandaname is not defined
+
+    - debug:
+        msg: "{{ item }}"
+      with_items:
+        - "{{ pandaname }}"
+        - "{{ FQDN }}"
+
+    - name: On s assure que pandaname et fqdn ne sont pas vide
+      assert:
+        that:
+          - "pandaname is defined"
+          - "FQDN is defined"
+        msg: "pandaname ou FQDN non defini"
+
 # Hostname
     - name: Application du hostname {{ pandaname }} 
       hostname: name={{ pandaname }}
@@ -283,29 +315,45 @@
       command: upnpc -a 192.168.1.33 8888 8888 TCP
 
 # HTTPS
-    - name: Installation Certbot
-      apt: name=certbot state=present
+#    - name: Installation Certbot
+#      apt: name=certbot state=present
 
-    - name: Creation .well-known
-      file: name=/var/www/html/.well-known state=directory owner=www-data group=www-data
+#    - name: Creation .well-known
+#      file: name=/var/www/html/.well-known state=directory owner=www-data group=www-data
 
-    - name: Create certs
-      shell: certbot -n certonly --webroot -w /var/www/html/ -d {{ FQDN }} -d emby.{{ FQDN }} -d nextcloud.{{ FQDN }} -d ampache.{{ FQDN }} -d homeassistant.{{ FQDN }} -d zoneminder.{{ FQDN }} -d transmission.{{ FQDN }} -m {{ email }}  --agree-tos --http-01-port 8888 --tls-sni-01-port 9292
+#    - name: Create certs
+#      shell: certbot -n certonly --webroot -w /var/www/html/ -d {{ FQDN }} -d emby.{{ FQDN }} -d nextcloud.{{ FQDN }} -d ampache.{{ FQDN }} -d homeassistant.{{ FQDN }} -d zoneminder.{{ FQDN }} -d transmission.{{ FQDN }} -m {{ email }}  --agree-tos --http-01-port 8888 --tls-sni-01-port 9292
 
-    - name: Crontab certbot
-      cron:
-        name: Certbot Renew
-        job: "certbot renew --renew-hook 'service nginx reload'"
-        day: 10
-        hour: 4
-        minute: 47
+#    - name: Crontab certbot
+#      cron:
+#        name: Certbot Renew
+#        job: "certbot renew --renew-hook 'service nginx reload'"
+#        day: 10
+#        hour: 4
+#        minute: 47
 
-    - name: Copie default-ssl
-      template: src=nginx.default-ssl dest=/etc/nginx/sites-enabled/default-ssl
+#    - name: Copie default-ssl
+#      template: src=nginx.default-ssl dest=/etc/nginx/sites-enabled/default-ssl
 
-    - name: Restart Nginx
-      service: name=nginx state=restarted
+#    - name: Restart Nginx
+#      service: name=nginx state=restarted
 
+# Rclone
+    - name: Copy Rclone config file
+      template: src=rcloneconfig dest=/root/.rclone.conf mode=0600
+
+    - name: Create Rclone container
+      shell: rclone mkdir remote:{{ pandaname }}
+
+    - name: Initiate Panda sync 
+      shell: "rclone sync /var/log secret:"
+
+    - name: Cron the Rclone save
+      cron: 
+        name: RClone Save
+        job: "rclone sync /var/log secret:"
+        minute: 5
+        
 # Firefox
     - name: Desinstallation de Chromium
       apt:
