@@ -1,0 +1,29 @@
+---
+- name: Panda Installation Playbook
+  hosts: all
+  tasks:
+    - name: Installation Certbot
+      apt: name=certbot state=present
+
+    - name: Copie letsencrypt.sh
+      template: src=letsencrypt.sh dest=/tmp/letsencrypt.sh mode=0700
+
+    - name: Copie nsupdate
+      template: src=nsupdate dest=/tmp/nsupdate mode=0600
+
+    - name: Create certs
+      shell: certbot -n certonly --manual -d {{ FQDN }} -d emby.{{ FQDN }} -d nextcloud.{{ FQDN }} -d ampache.{{ FQDN }} -d homeassistant.{{ FQDN }} -d zoneminder.{{ FQDN }} -d transmission.{{ FQDN }} -m {{ pandaname }}@mypanda.cloud --agree-tos --test-cert --preferred-challenges dns-01 --manual-auth-hook /tmp/letsencrypt.sh --manual-public-ip-logging-ok
+
+#    - name: Crontab certbot
+#      cron:
+#        name: Certbot Renew
+#        job: "certbot renew --renew-hook 'service nginx reload'"
+#        day: 10
+#        hour: 4
+#        minute: 47
+
+    - name: Copie default-ssl
+      template: src=nginx.default-ssl dest=/etc/nginx/sites-enabled/default-ssl
+
+    - name: Restart Nginx
+      service: name=nginx state=restarted

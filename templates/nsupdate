@@ -1,0 +1,5 @@
+server ns1.mypanda.cloud
+zone mypanda.cloud
+update delete _acme-challenge.$CERTBOT_DOMAIN
+update add _acme-challenge.$CERTBOT_DOMAIN. 60 IN TXT "$CERTBOT_VALIDATION
+send
