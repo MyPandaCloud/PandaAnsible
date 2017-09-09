@@ -4,6 +4,7 @@ user = {{ vault_os_user  }}
 key = {{ vault_os_key  }}
 auth = {{ vault_os_auth  }}
 tenant = {{ vault_os_tenant  }}
+tenant_id= {{ vault_os_tenant_id }}
 domain = {{ vault_os_domain  }}
 tenant_domain = {{ vault_os_tenant_domain  }}
 region = {{ vault_os_region  }}

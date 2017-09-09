@@ -46,7 +46,7 @@
         pandaname_content:
           stdout: "{{ mypandaname }}"
       when: mypandaname is defined
-      tags: https
+      tags: always 
 
     - name: Ou utilisation du nom cree
       set_fact:
@@ -347,18 +347,22 @@
 # Rclone
     - name: Copy Rclone config file
       template: src=rcloneconfig dest=/root/.rclone.conf mode=0600
+      tags: rclone
 
     - name: Create Rclone container
       shell: rclone mkdir remote:{{ pandaname }}
+      tags: rclone
 
     - name: Initiate Panda sync 
       shell: "rclone sync /var/log secret:"
+      tags: rclone 
 
     - name: Cron the Rclone save
       cron: 
         name: RClone Save
         job: "rclone sync /var/log secret:"
         minute: 5
+      tags: rclone
         
 # Firefox
     - name: Desinstallation de Chromium
