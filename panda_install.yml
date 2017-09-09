@@ -46,6 +46,7 @@
         pandaname_content:
           stdout: "{{ mypandaname }}"
       when: mypandaname is defined
+      tags: https
 
     - name: Ou utilisation du nom cree
       set_fact:
@@ -203,6 +204,13 @@
           Listen 8083
           Listen 8084
 
+    - name: a2enmod
+      command: a2enmod {{ item }}
+      args:
+        creates: /etc/apache2/mods-enabled/{{ item }}.load
+      with_items:
+        - rewrite
+
 # Apache2 vhost
     - name: Copie {{ item }} vhost file
       template: src={{ item }}.vhost.conf dest=/etc/apache2/sites-available/{{ item }}.conf
@@ -324,15 +332,17 @@
       no_log: True
       args:
         creates: /root/K{{ FQDN }}*.key
+      tags: https
 
     - name: Save key for DNS Server
       fetch: src=/root/{{ dnskey_content.stdout }}.private dest=/root/dnskeys/{{ FQDN }} flat=yes
       when: dnskey_content|changed
-
+      tags: https
 
     - name: Add key to DNS
       local_action: command /bin/bash /root/keytodns.sh {{ FQDN }}
       when: dnskey_content|changed
+      tags: https
 
 # Rclone
     - name: Copy Rclone config file
